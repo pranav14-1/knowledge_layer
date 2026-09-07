@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Dict, List
-import fitz
+import pymupdf as fitz
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,12 @@ def _parse_with_pymupdf(file_path: str) -> Dict[str, Any]:
         "pages": pages
     }
 
+_docling_converter = None
 
-def parse_pdf_document(file_path: str) -> Dict[str, Any]:
-    """
-    Parses a PDF document using Docling for layout and structure extraction.
-    Falls back to PyMuPDF if Docling fails or is unavailable for complex layouts.
-    """
-    try:
+
+def _get_docling_converter():
+    global _docling_converter
+    if _docling_converter is None:
         from docling.document_converter import DocumentConverter, PdfFormatOption
         from docling.datamodel.pipeline_options import PdfPipelineOptions
         from docling.datamodel.base_models import InputFormat
@@ -52,11 +51,21 @@ def parse_pdf_document(file_path: str) -> Dict[str, Any]:
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = False
 
-        converter = DocumentConverter(
+        _docling_converter = DocumentConverter(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
             }
         )
+    return _docling_converter
+
+
+def parse_pdf_document(file_path: str) -> Dict[str, Any]:
+    """
+    Parses a PDF document using Docling for layout and structure extraction.
+    Falls back to PyMuPDF if Docling fails or is unavailable for complex layouts.
+    """
+    try:
+        converter = _get_docling_converter()
         conv_result = converter.convert(file_path)
         doc = conv_result.document
 

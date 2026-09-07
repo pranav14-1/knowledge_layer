@@ -1,15 +1,22 @@
 import os
 from contextlib import asynccontextmanager
-from typing import List
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from typing import List, Optional
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import engine, Base, get_db
-from app.models import Document
-from app.schemas import DocumentResponse, MultiUploadResponse
+from app.models import Document, ExtractedFact, FactRelationship, RelationshipType
+from app.schemas import (
+    DocumentResponse,
+    MultiUploadResponse,
+    ExtractedFactResponse,
+    FactRelationshipDetailResponse
+)
 from app.parser import parse_pdf_document
+from app.extractor import extract_facts_from_document
+from app.reconciler import reconcile_document_facts
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "..", "uploads"))
 
@@ -69,6 +76,19 @@ async def upload_documents(
         db.commit()
         db.refresh(db_document)
 
+        # Extract atomic facts from parsed content
+        extract_facts_from_document(
+            db=db,
+            doc_id=db_document.id,
+            parsed_content=parsed_data
+        )
+
+        # Cross-reference facts against existing corpus documents
+        reconcile_document_facts(
+            db=db,
+            new_doc_id=db_document.id
+        )
+
         saved_documents.append(db_document)
 
     return MultiUploadResponse(
@@ -88,6 +108,31 @@ def get_document(doc_id: int, db: Session = Depends(get_db)):
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
+
+
+@app.get("/api/facts", response_model=List[ExtractedFactResponse])
+def get_facts(
+    document_id: Optional[int] = Query(None, description="Filter facts by source document ID"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(ExtractedFact)
+    if document_id is not None:
+        query = query.filter(ExtractedFact.document_id == document_id)
+    return query.order_by(ExtractedFact.page_number.asc()).all()
+
+
+@app.get("/api/relationships", response_model=List[FactRelationshipDetailResponse])
+def get_relationships(
+    type: Optional[RelationshipType] = Query(None, description="Filter by relationship classification"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(FactRelationship).options(
+        joinedload(FactRelationship.fact_a),
+        joinedload(FactRelationship.fact_b)
+    )
+    if type is not None:
+        query = query.filter(FactRelationship.relationship_type == type)
+    return query.order_by(FactRelationship.id.desc()).all()
 
 
 @app.get("/api/pdf/{filename}")

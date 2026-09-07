@@ -8,3 +8,5 @@ docling
 pymupdf
 pytest
 httpx
+instructor
+google-genai
