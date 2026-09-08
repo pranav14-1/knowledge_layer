@@ -4,18 +4,6 @@ A high-precision document intelligence and reconciliation system that extracts a
 
 ---
 
-## Video Demo
-
-- Demo Video Link: [Insert Loom / YouTube / Google Drive link here] (Under 3 minutes)
-- The video demonstrates:
-  1. Creating and renaming isolated workspaces.
-  2. Multi-file PDF upload with asynchronous background parsing and progress tracking.
-  3. Extraction of granular, table-aware atomic facts linked to PDF page citations.
-  4. The four core cross-document cases: Corroboration, Contradiction, Contextual Reconciliation, and Extraction Failure Analysis.
-  5. Interactive split-screen dashboard with dual-document page jumping and grounded conversational assistant.
-
----
-
 ## Setup and Run Instructions
 
 ### Prerequisites
