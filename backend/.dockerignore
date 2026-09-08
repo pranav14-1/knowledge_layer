@@ -1,0 +1,38 @@
+# Version Control
+.git/
+.gitignore
+
+# Environment & Secrets (SECURITY)
+.env
+.env*
+*.env
+*.pem
+*.key
+
+# Python Virtual Environments & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Database & Storage
+*.db
+*.sqlite
+*.sqlite3
+facts.db
+uploads/
+uploads/*
+
+# IDE & Temporary Files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+

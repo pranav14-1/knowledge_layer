@@ -42,9 +42,12 @@ dist-ssr/
 
 # Database & Storage
 *.db
+facts.db
+backend/facts.db
 *.sqlite3
 *.sqlite
 /backend/uploads/
+backend/uploads/
 uploads/
 
 # Environment and Secrets
