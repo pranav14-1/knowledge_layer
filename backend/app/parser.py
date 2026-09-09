@@ -57,9 +57,10 @@ def _parse_with_pymupdf(file_path: str, fallback_reason: str = None) -> Dict[str
 
     try:
         page_count = len(doc)
+        pages_to_parse = min(page_count, 25)
         pages: List[Dict[str, Any]] = []
 
-        for page_idx in range(page_count):
+        for page_idx in range(pages_to_parse):
             page = doc[page_idx]
             text = page.get_text("text").strip()
 

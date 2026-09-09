@@ -30,9 +30,6 @@ export default function Header({
           <h1 className="font-semibold text-slate-900 tracking-tight text-base">
             Fact Knowledge Layer
           </h1>
-          <span className="text-[11px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-            by Superjoin
-          </span>
         </div>
       </div>
 

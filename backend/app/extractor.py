@@ -103,8 +103,54 @@ def _heuristic_fact_extraction(
                     pass
 
     # 2. Parse Quantitative Financial Statements from Prose
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    # 2. Parse Adjacent-Line KPI Highlights (e.g. Value on line i, Metric on line i+1)
+    val_pat = re.compile(
+        r'^[₹$€£·Rs\.]*\s*[\d,]+(?:\.\d+)?\s*(?:%|Cr|Crore|Lakh|Billion|Million|Mn|Bn|K\s*tonnes|tonnes|USD|INR|percent)?$',
+        re.I
+    )
+    kpi_keywords = {'ebitda', 'revenue', 'margin', 'freight', 'parcel', 'profit', 'gdp', 'growth', 'expenditure', 'deficit', 'inflation', 'shipment', 'income', 'capex', 'tonnes'}
+    banned_labels = {
+        'annual report', 'limited', 'delhivery limited', 'financial statements',
+        'corporate overview', 'statutory reports', 'page', 'contents', 'table of contents',
+        'notice', 'directors report', 'independent auditors report', 'delhivery in numbers',
+        'highlights', 'performance review', 'letter to shareholders'
+    }
+    
+    page_time_m = re.search(r"\b(FY\s*\d{2,4}|Q[1-4]\s*(?:FY\s*\d{2,4}|\d{4})?|\d{4})\b", text, re.I)
+    default_page_time = page_time_m.group(0) if page_time_m else None
+    
+    detected_entity = "Delhivery" if "delhivery" in text.lower() else "General Economy" if any(k in text.lower() for k in ["deficit", "gdp", "inflation", "receipts"]) else "Corporate"
 
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    i = 0
+    while i < len(lines):
+        l = lines[i]
+        if val_pat.match(l):
+            if i + 1 < len(lines):
+                next_l = lines[i+1]
+                has_kw = any(k in next_l.lower() for k in kpi_keywords)
+                has_unit = any(u in l for u in ['%', 'Cr', 'Crore', 'Mn', 'Bn', '₹', '$', 'tonnes'])
+                if (has_kw or has_unit) and not re.match(r'^\(\d+(?:,\d+)*\)$', next_l) and 3 < len(next_l) < 60 and next_l.lower() not in banned_labels:
+                    unit_m = re.search(r"(%|Cr|Crore|Lakh|Billion|Million|Mn|Bn|tonnes|USD|INR|₹|\$)", l)
+                    time_m = re.search(r"\b(FY\s*\d{2,4}|Q[1-4]\s*(?:FY\s*\d{2,4}|\d{4})?|\d{4})\b", next_l, re.I)
+                    time_p = time_m.group(0) if time_m else default_page_time
+                    try:
+                        facts.append(AtomicFactSchema(
+                            entity=detected_entity,
+                            metric=next_l,
+                            value=l,
+                            unit=unit_m.group(1) if unit_m else None,
+                            time_period=time_p,
+                            raw_text_evidence=f"{next_l}: {l}",
+                            page_number=page_number
+                        ))
+                    except Exception:
+                        pass
+                    i += 2
+                    continue
+        i += 1
+
+    # 3. Parse Quantitative Financial Statements from Prose
     # Pattern A: Entity [reported/achieved] [Time] Metric [was/of] Value [Time]
     p_corp = re.compile(
         r"^(?:(?:the|in)\s+)?([A-Z][A-Za-z0-9\s&.,-]+?)(?:\s+(?:reported|achieved|recorded|posted|announced|had|registered))?\s+(?:(Q[1-4]\s*(?:FY\s*\d{2,4}|\d{4})?|H[1-2]\s*(?:FY\s*\d{2,4}|\d{4})?|FY\s*\d{2,4}|\d{4})\s+)?(Revenue|Total Revenue|Gross Margin|Net Profit|Net Income|EBITDA|Capital Expenditure|Capex|Operating Profit)\s+(?:was|is|reached|stood at|of)\s+([₹$€£·Rs\.]*\s*[\d,]+(?:\.\d+)?\s*(?:%|Cr|Crore|Lakh|Billion|Million|USD|INR|percent|per cent)?)(?:\s+(?:in|for)\s+(Q[1-4]\s*(?:FY\s*\d{2,4}|\d{4})?|H[1-2]\s*(?:FY\s*\d{2,4}|\d{4})?|FY\s*\d{2,4}|\d{4}))?",
