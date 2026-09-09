@@ -13,7 +13,7 @@ A high-precision document intelligence and reconciliation system that extracts a
 
 ---
 
-### Option 1: Quickstart with Docker Compose (Recommended)
+### Option 1: Quickstart with Docker Compose 
 
 1. Clone the repository:
    ```bash
